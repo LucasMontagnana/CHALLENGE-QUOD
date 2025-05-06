@@ -2,6 +2,7 @@ package br.com.fiap.QUOD.service;
 import br.com.fiap.QUOD.model.Biometria;
 import br.com.fiap.QUOD.repository.BiometriaRepository;
 import org.bson.types.Binary;
+import org.opencv.objdetect.CascadeClassifier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,6 +14,8 @@ import com.drew.metadata.exif.ExifIFD0Directory;
 import com.drew.metadata.exif.GpsDirectory;
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.util.Date;
 import java.util.Arrays;
 import java.util.List;
@@ -32,8 +35,26 @@ public class BiometriaService {
     private static final long TAMANHO_MAX = 5 * 1024 * 1024; // 5MB
     private static final int LARGURA_MIN = 200;
     private static final int ALTURA_MIN = 200;
+    private static final CascadeClassifier FACE_DETECTOR;
+
     static {
         nu.pattern.OpenCV.loadLocally(); // se usar o wrapper openpnp
+    }
+
+    static {
+        try (InputStream is = BiometriaService.class.getClassLoader()
+                .getResourceAsStream("haarcascade_frontalface_default.xml")) {
+
+            if (is == null) {
+                throw new IOException("Arquivo haarcascade_frontalface_default.xml não encontrado nos resources.");
+            }
+
+            File tempFile = File.createTempFile("haarcascade", ".xml");
+            Files.copy(is, tempFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            FACE_DETECTOR = new CascadeClassifier(tempFile.getAbsolutePath());
+        } catch (IOException e) {
+            throw new ExceptionInInitializerError("Erro ao carregar Haar Cascade: " + e.getMessage());
+        }
     }
 
     @Autowired
@@ -106,6 +127,7 @@ public class BiometriaService {
         // Cria arquivo temporário com a extensão correta
         File tempFile = File.createTempFile("upload_", extensao);
 
+
         try {
             // Salva os bytes da imagem no arquivo temporário
             java.nio.file.Files.write(tempFile.toPath(), imagemBytes);
@@ -126,10 +148,25 @@ public class BiometriaService {
             Core.meanStdDev(laplaciano, mean, stddev);
 
             double variancia = stddev.get(0, 0)[0];
+            System.out.println("Variância da imagem: " + variancia);
 
             // Heurística: baixa variação indica imagem artificial/suspeita
             if (variancia < 10.0) {
                 throw new Exception("Imagem com baixa complexidade visual. Possível fraude (foto de tela, papel ou máscara).");
+            }
+
+            // Detecta rostos
+            MatOfRect faces = new MatOfRect();
+            FACE_DETECTOR.detectMultiScale(imagem, faces);
+
+            int numRostos = faces.toArray().length;
+            System.out.println("Rostos detectados: " + numRostos);
+
+            // Verifica se pelo menos um rosto foi encontrado
+            if (faces.empty()) {
+                throw new Exception("Nenhum rosto detectado na imagem. Possível tentativa de fraude.");
+            } else if (numRostos > 1) {
+                throw new Exception("Mais de um rosto detectado. Imagem inválida para biometria.");
             }
 
         } finally {
