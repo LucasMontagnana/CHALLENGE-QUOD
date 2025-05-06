@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("/api2")
+@RequestMapping("/api")
 public class BiometriaController {
 
     @Autowired
@@ -16,12 +16,13 @@ public class BiometriaController {
 
     @PostMapping("/biometria")
     @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<Biometria> uploadDocumento(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<String> uploadDocumento(@RequestParam("file") MultipartFile file) {
         try {
             Biometria biometriaSalva = biometriaService.salvarBiometria(file);
-            return ResponseEntity.ok(biometriaSalva);
+            return ResponseEntity.ok("Imagem salva com ID: " + biometriaSalva.getId());
         } catch (Exception e) {
-            return ResponseEntity.status(500).build();
+            //return ResponseEntity.badRequest().body("Erro ao processar imagem: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Erro ao processar imagem: " + e.getMessage());
         }
     }
 }
