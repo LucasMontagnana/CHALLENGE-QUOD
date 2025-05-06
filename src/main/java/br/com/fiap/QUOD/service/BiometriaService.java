@@ -11,7 +11,7 @@ import com.drew.metadata.Metadata;
 import com.drew.metadata.exif.ExifSubIFDDirectory;
 import com.drew.metadata.exif.ExifIFD0Directory;
 import com.drew.metadata.exif.GpsDirectory;
-
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.util.Date;
 import java.util.Arrays;
@@ -40,21 +40,24 @@ public class BiometriaService {
     private BiometriaRepository biometriaRepository;
 
     public Biometria salvarBiometria(MultipartFile file) throws Exception {
-        validarImagem(file);
-        Biometria biometria = validarMetadados(file);
+        byte[] imagemBytes = file.getBytes(); // lê uma vez só
+        validarImagem(imagemBytes, file.getContentType());
+        validarImagemFraudulenta(imagemBytes, file.getContentType()); // opcional
+        Biometria biometria = validarMetadados(imagemBytes, file);
         return biometriaRepository.save(biometria);
     }
 
-    private void validarImagem(MultipartFile file) throws Exception {
-        if (!TIPOS_PERMITIDOS.contains(file.getContentType())) {
+
+    private void validarImagem(byte[] imagemBytes, String contentType) throws Exception {
+        if (!TIPOS_PERMITIDOS.contains(contentType)) {
             throw new Exception("Formato não permitido. Use JPEG ou PNG.");
         }
 
-        if (file.getSize() > TAMANHO_MAX) {
+        if (imagemBytes.length > TAMANHO_MAX) {
             throw new Exception("Tamanho máximo de imagem excedido (5MB).");
         }
 
-        BufferedImage image = ImageIO.read(file.getInputStream());
+        BufferedImage image = ImageIO.read(new ByteArrayInputStream(imagemBytes));
         if (image == null) {
             throw new Exception("Imagem inválida.");
         }
@@ -62,31 +65,27 @@ public class BiometriaService {
         if (image.getWidth() < LARGURA_MIN || image.getHeight() < ALTURA_MIN) {
             throw new Exception("Dimensão mínima: 200x200 pixels.");
         }
-
     }
 
-    private Biometria validarMetadados(MultipartFile file) throws Exception {
-        Metadata metadata = ImageMetadataReader.readMetadata(file.getInputStream());
 
-        // Data de captura
+    private Biometria validarMetadados(byte[] imagemBytes, MultipartFile file) throws Exception {
+        Metadata metadata = ImageMetadataReader.readMetadata(new ByteArrayInputStream(imagemBytes));
+
         ExifSubIFDDirectory exif = metadata.getFirstDirectoryOfType(ExifSubIFDDirectory.class);
         Date dataCaptura = exif != null ? exif.getDateOriginal() : null;
 
-        // Fabricante e modelo
         ExifIFD0Directory ifd0 = metadata.getFirstDirectoryOfType(ExifIFD0Directory.class);
         String fabricante = ifd0 != null ? ifd0.getString(ExifIFD0Directory.TAG_MAKE) : null;
         String modelo = ifd0 != null ? ifd0.getString(ExifIFD0Directory.TAG_MODEL) : null;
 
-        // GPS
         GpsDirectory gpsDir = metadata.getFirstDirectoryOfType(GpsDirectory.class);
         String gps = gpsDir != null && gpsDir.getGeoLocation() != null
                 ? gpsDir.getGeoLocation().toString()
                 : "Sem localização";
 
-        // Impressão (pode ser log, salvar, ou validar)
         Biometria biometria = new Biometria();
         biometria.setNomeArquivo(file.getOriginalFilename());
-        biometria.setConteudo(new Binary(file.getBytes()));
+        biometria.setConteudo(new Binary(imagemBytes));
         biometria.setDataCaptura(dataCaptura);
         biometria.setFabricante(fabricante);
         biometria.setModelo(modelo);
@@ -94,31 +93,47 @@ public class BiometriaService {
         return biometria;
     }
 
-    private void validarImagemFraudulenta(MultipartFile file) throws IOException, Exception {
-        // Salva temporariamente para leitura com OpenCV
-        File tempFile = File.createTempFile("upload", ".tmp");
-        file.transferTo(tempFile);
 
-        // Lê a imagem em escala de cinza
-        Mat imagem = Imgcodecs.imread(tempFile.getAbsolutePath(), Imgcodecs.IMREAD_GRAYSCALE);
-
-        // Aplica o filtro de Laplaciano (detecta bordas)
-        Mat laplaciano = new Mat();
-        Imgproc.Laplacian(imagem, laplaciano, CvType.CV_64F);
-
-        // Calcula a variação
-        MatOfDouble mean = new MatOfDouble();
-        MatOfDouble stddev = new MatOfDouble();
-        Core.meanStdDev(laplaciano, mean, stddev);
-
-        double variancia = stddev.get(0, 0)[0];
-
-        // Heurística: se a variação for muito baixa, pode ser fraude (foto de tela ou papel)
-        if (variancia < 10.0) {
-            throw new Exception("Imagem com baixa complexidade visual. Possível tentativa de fraude (foto de foto ou impressão).");
+    private void validarImagemFraudulenta(byte[] imagemBytes, String contentType) throws Exception {
+        // Define extensão com base no tipo MIME
+        String extensao;
+        switch (contentType) {
+            case "image/jpeg": extensao = ".jpg"; break;
+            case "image/png": extensao = ".png"; break;
+            default: throw new Exception("Formato não suportado para validação com OpenCV.");
         }
 
-        // Apaga arquivo temporário
-        tempFile.delete();
+        // Cria arquivo temporário com a extensão correta
+        File tempFile = File.createTempFile("upload_", extensao);
+
+        try {
+            // Salva os bytes da imagem no arquivo temporário
+            java.nio.file.Files.write(tempFile.toPath(), imagemBytes);
+            System.out.println("Arquivo temporário salvo em: " + tempFile.getAbsolutePath());
+
+            // Lê a imagem com OpenCV
+            Mat imagem = Imgcodecs.imread(tempFile.getAbsolutePath(), Imgcodecs.IMREAD_GRAYSCALE);
+            if (imagem.empty()) {
+                throw new IOException("Erro ao processar imagem com OpenCV. Verifique se o arquivo é válido.");
+            }
+
+            // Aplica o filtro de Laplaciano para detectar complexidade
+            Mat laplaciano = new Mat();
+            Imgproc.Laplacian(imagem, laplaciano, CvType.CV_64F);
+
+            MatOfDouble mean = new MatOfDouble();
+            MatOfDouble stddev = new MatOfDouble();
+            Core.meanStdDev(laplaciano, mean, stddev);
+
+            double variancia = stddev.get(0, 0)[0];
+
+            // Heurística: baixa variação indica imagem artificial/suspeita
+            if (variancia < 10.0) {
+                throw new Exception("Imagem com baixa complexidade visual. Possível fraude (foto de tela, papel ou máscara).");
+            }
+
+        } finally {
+            tempFile.delete(); // garante remoção do arquivo temporário
+        }
     }
 }
