@@ -1,0 +1,13 @@
+package br.com.fiap.QUOD;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+class QuodApplicationTests {
+
+	@Test
+	void contextLoads() {
+	}
+
+}
