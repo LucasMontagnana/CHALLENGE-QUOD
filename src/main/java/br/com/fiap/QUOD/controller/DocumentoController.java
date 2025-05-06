@@ -20,18 +20,12 @@ public class DocumentoController {
 
     @PostMapping("/documentos")
     @ResponseStatus(HttpStatus.CREATED)
-    public Documento gravar(@RequestParam("nome") String nome,
-                            @RequestParam("extensao") String extensao,
-                            @RequestParam("dataEnvio") String dataEnvio,
-                            @RequestParam("arquivo") MultipartFile arquivo) throws IOException {
+    public Documento gravar(@RequestParam("file") MultipartFile arquivo) throws IOException {
         // Converte o arquivo em byte[] e cria o Documento
         Documento documento = new Documento();
-        documento.setNome(nome);
-        documento.setExtensao(extensao);
-        documento.setDataEnvio(LocalDate.parse(dataEnvio));
+        documento.setDataEnvio(LocalDate.now());
         documento.setConteudo(arquivo.getBytes()); // aqui está o conteúdo do arquivo em byte[]
-
-        return service.gravar(documento); // salvar o documento no banco
+        return service.gravar(documento, arquivo); // salvar o documento no banco
     }
 
     @GetMapping("/documentos")

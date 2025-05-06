@@ -14,14 +14,14 @@ public class BiometriaDigitalController {
     private BiometriaDigitalService service;
 
     @PostMapping("/cadastrar")
-    public ResponseEntity<String> cadastrar(@RequestParam("arquivo") MultipartFile arquivo) throws Exception {
+    public ResponseEntity<String> cadastrar(@RequestParam("file") MultipartFile arquivo) throws Exception {
         String id = service.salvar(arquivo);
         return ResponseEntity.ok("Biometria digital salva com ID: " + id);
     }
 
     @PostMapping("/comparar/{id}")
     public ResponseEntity<String> comparar(@PathVariable String id,
-                                           @RequestParam("arquivo") MultipartFile arquivo) throws Exception {
+                                           @RequestParam("file") MultipartFile arquivo) throws Exception {
         boolean resultado = service.comparar(id, arquivo);
         return ResponseEntity.ok("Biometrias são " + (resultado ? "compatíveis" : "diferentes"));
     }
