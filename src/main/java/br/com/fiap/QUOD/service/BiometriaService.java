@@ -11,6 +11,8 @@ import com.drew.metadata.Metadata;
 import com.drew.metadata.exif.ExifSubIFDDirectory;
 import com.drew.metadata.exif.ExifIFD0Directory;
 import com.drew.metadata.exif.GpsDirectory;
+
+import java.io.File;
 import java.util.Date;
 import java.util.Arrays;
 import java.util.List;
@@ -19,6 +21,9 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import org.opencv.core.*;
+import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
 
 @Service
 public class BiometriaService {
@@ -27,6 +32,9 @@ public class BiometriaService {
     private static final long TAMANHO_MAX = 5 * 1024 * 1024; // 5MB
     private static final int LARGURA_MIN = 200;
     private static final int ALTURA_MIN = 200;
+    static {
+        nu.pattern.OpenCV.loadLocally(); // se usar o wrapper openpnp
+    }
 
     @Autowired
     private BiometriaRepository biometriaRepository;
@@ -84,5 +92,33 @@ public class BiometriaService {
         biometria.setModelo(modelo);
         biometria.setGeoLocation(gps);
         return biometria;
+    }
+
+    private void validarImagemFraudulenta(MultipartFile file) throws IOException, Exception {
+        // Salva temporariamente para leitura com OpenCV
+        File tempFile = File.createTempFile("upload", ".tmp");
+        file.transferTo(tempFile);
+
+        // Lê a imagem em escala de cinza
+        Mat imagem = Imgcodecs.imread(tempFile.getAbsolutePath(), Imgcodecs.IMREAD_GRAYSCALE);
+
+        // Aplica o filtro de Laplaciano (detecta bordas)
+        Mat laplaciano = new Mat();
+        Imgproc.Laplacian(imagem, laplaciano, CvType.CV_64F);
+
+        // Calcula a variação
+        MatOfDouble mean = new MatOfDouble();
+        MatOfDouble stddev = new MatOfDouble();
+        Core.meanStdDev(laplaciano, mean, stddev);
+
+        double variancia = stddev.get(0, 0)[0];
+
+        // Heurística: se a variação for muito baixa, pode ser fraude (foto de tela ou papel)
+        if (variancia < 10.0) {
+            throw new Exception("Imagem com baixa complexidade visual. Possível tentativa de fraude (foto de foto ou impressão).");
+        }
+
+        // Apaga arquivo temporário
+        tempFile.delete();
     }
 }

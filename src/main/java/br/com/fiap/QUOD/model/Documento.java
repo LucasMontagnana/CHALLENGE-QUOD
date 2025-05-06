@@ -14,6 +14,8 @@ public class Documento {
     private String extensao;
     private LocalDate dataEnvio;
 
+    private byte[] conteudo;
+
     public String getId() {
         return id;
     }
@@ -42,8 +44,17 @@ public class Documento {
         return dataEnvio;
     }
 
-    public void setData_envio(LocalDate dataEnvio) {
+    public void setDataEnvio(LocalDate dataEnvio) {
         this.dataEnvio = dataEnvio;
+    }
+
+    // 👉 Adicione estes métodos:
+    public byte[] getConteudo() {
+        return conteudo;
+    }
+
+    public void setConteudo(byte[] conteudo) {
+        this.conteudo = conteudo; // Método para setar o conteúdo do arquivo
     }
 
     @Override

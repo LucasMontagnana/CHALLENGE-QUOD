@@ -22,5 +22,5 @@ public class DocumentoService {
     public List<Documento> listarTodosOsDocumentos(){
         return documentoRepository.findAll();
     }
-
 }
+
