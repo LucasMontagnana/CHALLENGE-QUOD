@@ -26,6 +26,7 @@ public class BiometriaService {
     private BiometriaRepository biometriaRepository;
 
     public Biometria salvarBiometria(MultipartFile file) throws Exception {
+        validarImagem(file);
         Biometria biometria = new Biometria();
         biometria.setNomeArquivo(file.getOriginalFilename());
         biometria.setConteudo(new Binary(file.getBytes()));
