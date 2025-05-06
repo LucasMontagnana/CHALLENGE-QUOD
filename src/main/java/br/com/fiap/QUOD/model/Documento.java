@@ -42,7 +42,7 @@ public class Documento {
         return dataEnvio;
     }
 
-    public void setData_envio(LocalDate dataEnvio) {
+    public void setDataEnvio(LocalDate dataEnvio) {
         this.dataEnvio = dataEnvio;
     }
 
