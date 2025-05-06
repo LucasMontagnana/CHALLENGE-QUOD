@@ -1,7 +1,9 @@
 package br.com.fiap.QUOD.service;
 import br.com.fiap.QUOD.dto.NotificacaoFraudeRequest;
 import br.com.fiap.QUOD.model.BiometriaFacial;
+import br.com.fiap.QUOD.model.NotificacaoFraude;
 import br.com.fiap.QUOD.repository.BiometriaFacialRepository;
+import br.com.fiap.QUOD.util.NotificacaoFraudeUtil;
 import org.bson.types.Binary;
 import org.opencv.objdetect.CascadeClassifier;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,13 +19,13 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.time.Instant;
 import java.util.Date;
 import java.util.Arrays;
 import java.util.List;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-
 import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
@@ -33,8 +35,6 @@ public class BiometriaFacialService {
 
     @Autowired
     private BiometriaFacialRepository biometriaFacialRepository;
-    @Autowired
-    private RestTemplate restTemplate;
     private static final List<String> TIPOS_PERMITIDOS = Arrays.asList("image/jpeg", "image/png");
     private static final long TAMANHO_MAX = 5 * 1024 * 1024; // 5MB
     private static final int LARGURA_MIN = 200;
@@ -64,8 +64,8 @@ public class BiometriaFacialService {
     public BiometriaFacial salvarBiometria(MultipartFile file) throws Exception {
         byte[] imagemBytes = file.getBytes();
         validarImagem(imagemBytes, file.getContentType());
-        validarImagemFraudulenta(imagemBytes, file.getContentType());
         BiometriaFacial biometriaFacial = validarMetadados(imagemBytes, file);
+        validarImagemFraudulenta(imagemBytes, file.getContentType(), biometriaFacial);
         return biometriaFacialRepository.save(biometriaFacial);
     }
 
@@ -113,8 +113,9 @@ public class BiometriaFacialService {
         return biometriaFacial;
     }
 
-    private void validarImagemFraudulenta(byte[] imagemBytes, String contentType) throws Exception {
+    private void validarImagemFraudulenta(byte[] imagemBytes, String contentType, BiometriaFacial biometriaFacial) throws Exception {
         // Define extensão com base no tipo MIME
+        String tipoFraude = null;
         String extensao;
         switch (contentType) {
             case "image/jpeg": extensao = ".jpg"; break;
@@ -135,62 +136,46 @@ public class BiometriaFacialService {
             }
 
             // Aplica o filtro de Laplaciano para detectar complexidade
-            Mat laplaciano = new Mat();
-            Imgproc.Laplacian(imagem, laplaciano, CvType.CV_64F);
-
-            MatOfDouble mean = new MatOfDouble();
-            MatOfDouble stddev = new MatOfDouble();
-            Core.meanStdDev(laplaciano, mean, stddev);
-
-            double variancia = stddev.get(0, 0)[0];
-            System.out.println("Variância da imagem: " + variancia);
-
-            // Heurística: baixa variação indica imagem artificial/suspeita
-            if (variancia < 10.0) {
-                throw new Exception("Imagem com baixa complexidade visual. Possível fraude (foto de tela, papel ou máscara).");
-            }
-
+            double variancia = calcularVariancia(imagem);
             // Detecta rostos
-            MatOfRect faces = new MatOfRect();
-            FACE_DETECTOR.detectMultiScale(imagem, faces);
+            MatOfRect faces = detectaRosto(imagem);
+            tipoFraude = detectarFraude(variancia, faces);
 
-            int numRostos = faces.toArray().length;
-            System.out.println("Rostos detectados: " + numRostos);
-
-            // Verifica se pelo menos um rosto foi encontrado
-            if (faces.empty()) {
-                throw new Exception("Nenhum rosto detectado na imagem. Possível tentativa de fraude.");
+            if (tipoFraude != null) {
+                NotificacaoFraudeRequest request = NotificacaoFraudeRequest.criarNotificacao(biometriaFacial, tipoFraude, "biometria-facial");
+                NotificacaoFraudeUtil.notificarFraude(request);
             }
-
         } finally {
             tempFile.delete(); // garante remoção do arquivo temporário
         }
     }
+    private double calcularVariancia(Mat imagem){
+        Mat laplaciano = new Mat();
+        Imgproc.Laplacian(imagem, laplaciano, CvType.CV_64F);
+        MatOfDouble mean = new MatOfDouble();
+        MatOfDouble stddev = new MatOfDouble();
+        Core.meanStdDev(laplaciano, mean, stddev);
+        double variancia = stddev.get(0, 0)[0];
+        System.out.println("Variância da imagem: " + variancia);
+        return variancia;
+    }
 
-    private void notificarFraude(String tipoFraude, Date dataCaptura, String fabricante, String modelo, String ipOrigem, Double latitude, Double longitude) {
-        String url = "http://localhost:8080/api/notificacoes/fraude"; // ajuste se necessário
+    private MatOfRect detectaRosto(Mat imagem){
+        MatOfRect faces = new MatOfRect();
+        FACE_DETECTOR.detectMultiScale(imagem, faces);
+        int numRostos = faces.toArray().length;
+        System.out.println("Rostos detectados: " + numRostos);
+        return faces;
+    }
 
-        NotificacaoFraudeRequest request = new NotificacaoFraudeRequest();
-        request.setTransacaoId("abc");
-        request.setTipoBiometria("facial");
-        request.setTipoFraude(tipoFraude);
-        //request.setDataCaptura(dataCaptura != null ? dataCaptura.toInstant().toString() : Instant.now().toString());
-
-        NotificacaoFraudeRequest.Dispositivo dispositivo = new NotificacaoFraudeRequest.Dispositivo();
-        dispositivo.setFabricante(fabricante);
-        dispositivo.setModelo(modelo);
-        dispositivo.setSistemaOperacional("Desconhecido"); // você pode tentar extrair isso se tiver
-        request.setDispositivo(dispositivo);
-
-        request.setCanalNotificacao(Arrays.asList("sms", "email"));
-        request.setNotificadoPor("sistema-de-monitoramento");
-
-        NotificacaoFraudeRequest.Metadados metadados = new NotificacaoFraudeRequest.Metadados();
-        metadados.setLatitude(latitude);
-        metadados.setLongitude(longitude);
-        metadados.setIpOrigem(ipOrigem);
-        request.setMetadados(metadados);
-
-        restTemplate.postForEntity(url, request, Void.class);
+    private String detectarFraude(double variancia, MatOfRect faces) {
+        String tipoFraude = null;
+        // Heurística: baixa variação indica imagem artificial/suspeita
+        if (variancia < 10.0) {
+            tipoFraude = "Imagem com baixa complexidade visual. Possível fraude (foto de tela, papel ou máscara)";
+        } else if (faces.empty()) {
+            tipoFraude = "Nenhum rosto detectado na imagem. Possível tentativa de fraude.";
+        }
+        return tipoFraude;
     }
 }

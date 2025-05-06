@@ -4,6 +4,7 @@ import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -15,7 +16,7 @@ public class NotificacaoFraude {
     private String transacaoId;
     private String tipoBiometria;
     private String tipoFraude;
-    private Instant dataCaptura;
+    private Date dataCaptura;
     private Dispositivo dispositivo;
     private List<String> canalNotificacao;
     private String notificadoPor;
