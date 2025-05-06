@@ -1,7 +1,7 @@
 package br.com.fiap.QUOD.service;
 import br.com.fiap.QUOD.dto.NotificacaoFraudeRequest;
-import br.com.fiap.QUOD.model.Biometria;
-import br.com.fiap.QUOD.repository.BiometriaRepository;
+import br.com.fiap.QUOD.model.BiometriaFacial;
+import br.com.fiap.QUOD.repository.BiometriaFacialRepository;
 import org.bson.types.Binary;
 import org.opencv.objdetect.CascadeClassifier;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import com.drew.imaging.ImageMetadataReader;
-import com.drew.metadata.Directory;
 import com.drew.metadata.Metadata;
 import com.drew.metadata.exif.ExifSubIFDDirectory;
 import com.drew.metadata.exif.ExifIFD0Directory;
@@ -18,25 +17,22 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.time.Instant;
 import java.util.Date;
 import java.util.Arrays;
 import java.util.List;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
+
 import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
-import java.time.ZonedDateTime;
 
 @Service
-public class BiometriaService {
+public class BiometriaFacialService {
 
     @Autowired
-    private BiometriaRepository biometriaRepository;
+    private BiometriaFacialRepository biometriaFacialRepository;
     @Autowired
     private RestTemplate restTemplate;
     private static final List<String> TIPOS_PERMITIDOS = Arrays.asList("image/jpeg", "image/png");
@@ -50,7 +46,7 @@ public class BiometriaService {
     }
 
     static {
-        try (InputStream is = BiometriaService.class.getClassLoader()
+        try (InputStream is = BiometriaFacialService.class.getClassLoader()
                 .getResourceAsStream("haarcascade_frontalface_default.xml")) {
 
             if (is == null) {
@@ -65,12 +61,12 @@ public class BiometriaService {
         }
     }
 
-    public Biometria salvarBiometria(MultipartFile file) throws Exception {
+    public BiometriaFacial salvarBiometria(MultipartFile file) throws Exception {
         byte[] imagemBytes = file.getBytes();
         validarImagem(imagemBytes, file.getContentType());
         validarImagemFraudulenta(imagemBytes, file.getContentType());
-        Biometria biometria = validarMetadados(imagemBytes, file);
-        return biometriaRepository.save(biometria);
+        BiometriaFacial biometriaFacial = validarMetadados(imagemBytes, file);
+        return biometriaFacialRepository.save(biometriaFacial);
     }
 
     private void validarImagem(byte[] imagemBytes, String contentType) throws Exception {
@@ -92,7 +88,7 @@ public class BiometriaService {
         }
     }
 
-    private Biometria validarMetadados(byte[] imagemBytes, MultipartFile file) throws Exception {
+    private BiometriaFacial validarMetadados(byte[] imagemBytes, MultipartFile file) throws Exception {
         Metadata metadata = ImageMetadataReader.readMetadata(new ByteArrayInputStream(imagemBytes));
 
         ExifSubIFDDirectory exif = metadata.getFirstDirectoryOfType(ExifSubIFDDirectory.class);
@@ -107,14 +103,14 @@ public class BiometriaService {
                 ? gpsDir.getGeoLocation().toString()
                 : "Sem localização";
 
-        Biometria biometria = new Biometria();
-        biometria.setNomeArquivo(file.getOriginalFilename());
-        biometria.setConteudo(new Binary(imagemBytes));
-        biometria.setDataCaptura(dataCaptura);
-        biometria.setFabricante(fabricante);
-        biometria.setModelo(modelo);
-        biometria.setGeoLocation(gps);
-        return biometria;
+        BiometriaFacial biometriaFacial = new BiometriaFacial();
+        biometriaFacial.setNomeArquivo(file.getOriginalFilename());
+        biometriaFacial.setConteudo(new Binary(imagemBytes));
+        biometriaFacial.setDataCaptura(dataCaptura);
+        biometriaFacial.setFabricante(fabricante);
+        biometriaFacial.setModelo(modelo);
+        biometriaFacial.setGeoLocation(gps);
+        return biometriaFacial;
     }
 
     private void validarImagemFraudulenta(byte[] imagemBytes, String contentType) throws Exception {

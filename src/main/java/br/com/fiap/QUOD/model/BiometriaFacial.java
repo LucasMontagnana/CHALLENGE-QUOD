@@ -2,16 +2,13 @@ package br.com.fiap.QUOD.model;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-import java.time.LocalDate;
+
 import java.util.Date;
-import java.util.Objects;
 import java.util.UUID;
 import org.bson.types.Binary;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 
-@Document(collection = "biometria")
-public class Biometria {
+@Document(collection = "biometria-facial")
+public class BiometriaFacial {
 
     @Id
     private String id = UUID.randomUUID().toString();
@@ -48,7 +45,7 @@ public class Biometria {
 
     @Override
     public String toString() {
-        return "Biometria{" +
+        return "BiometriaFacial{" +
                 "id='" + id + '\'' +
                 ", nomeArquivo='" + nomeArquivo + '\'' +
                 ", conteudo=" + conteudo +
