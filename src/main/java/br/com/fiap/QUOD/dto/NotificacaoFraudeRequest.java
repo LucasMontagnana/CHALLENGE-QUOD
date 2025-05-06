@@ -1,7 +1,7 @@
-// NotificacaoFraudeRequest.java
 package br.com.fiap.QUOD.dto;
 
 import lombok.Data;
+
 import java.time.ZonedDateTime;
 import java.util.List;
 

@@ -1,10 +1,12 @@
 package br.com.fiap.QUOD.service;
+import br.com.fiap.QUOD.dto.NotificacaoFraudeRequest;
 import br.com.fiap.QUOD.model.Biometria;
 import br.com.fiap.QUOD.repository.BiometriaRepository;
 import org.bson.types.Binary;
 import org.opencv.objdetect.CascadeClassifier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import com.drew.imaging.ImageMetadataReader;
 import com.drew.metadata.Directory;
@@ -16,6 +18,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.time.Instant;
 import java.util.Date;
 import java.util.Arrays;
 import java.util.List;
@@ -27,12 +30,15 @@ import java.util.List;
 import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
+import java.time.ZonedDateTime;
 
 @Service
 public class BiometriaService {
 
     @Autowired
     private BiometriaRepository biometriaRepository;
+    @Autowired
+    private RestTemplate restTemplate;
     private static final List<String> TIPOS_PERMITIDOS = Arrays.asList("image/jpeg", "image/png");
     private static final long TAMANHO_MAX = 5 * 1024 * 1024; // 5MB
     private static final int LARGURA_MIN = 200;
@@ -163,5 +169,32 @@ public class BiometriaService {
         } finally {
             tempFile.delete(); // garante remoção do arquivo temporário
         }
+    }
+
+    private void notificarFraude(String tipoFraude, Date dataCaptura, String fabricante, String modelo, String ipOrigem, Double latitude, Double longitude) {
+        String url = "http://localhost:8080/api/notificacoes/fraude"; // ajuste se necessário
+
+        NotificacaoFraudeRequest request = new NotificacaoFraudeRequest();
+        request.setTransacaoId("abc");
+        request.setTipoBiometria("facial");
+        request.setTipoFraude(tipoFraude);
+        //request.setDataCaptura(dataCaptura != null ? dataCaptura.toInstant().toString() : Instant.now().toString());
+
+        NotificacaoFraudeRequest.Dispositivo dispositivo = new NotificacaoFraudeRequest.Dispositivo();
+        dispositivo.setFabricante(fabricante);
+        dispositivo.setModelo(modelo);
+        dispositivo.setSistemaOperacional("Desconhecido"); // você pode tentar extrair isso se tiver
+        request.setDispositivo(dispositivo);
+
+        request.setCanalNotificacao(Arrays.asList("sms", "email"));
+        request.setNotificadoPor("sistema-de-monitoramento");
+
+        NotificacaoFraudeRequest.Metadados metadados = new NotificacaoFraudeRequest.Metadados();
+        metadados.setLatitude(latitude);
+        metadados.setLongitude(longitude);
+        metadados.setIpOrigem(ipOrigem);
+        request.setMetadados(metadados);
+
+        restTemplate.postForEntity(url, request, Void.class);
     }
 }
