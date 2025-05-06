@@ -21,7 +21,6 @@ public class BiometriaController {
             Biometria biometriaSalva = biometriaService.salvarBiometria(file);
             return ResponseEntity.ok("Imagem salva com ID: " + biometriaSalva.getId() + "Imagem: " + biometriaSalva.toString());
         } catch (Exception e) {
-            //return ResponseEntity.badRequest().body("Erro ao processar imagem: " + e.getMessage());
             return ResponseEntity.badRequest().body("Erro ao processar imagem: " + e.getMessage());
         }
     }

@@ -34,37 +34,17 @@ public class Biometria {
     public Binary getConteudo() { return conteudo; }
     public void setConteudo(Binary conteudo) { this.conteudo = conteudo; }
 
-    public Date getDataCaptura() {
-        return dataCaptura;
-    }
+    public Date getDataCaptura() { return dataCaptura; }
+    public void setDataCaptura(Date dataCaptura) { this.dataCaptura = dataCaptura; }
 
-    public void setDataCaptura(Date dataCaptura) {
-        this.dataCaptura = dataCaptura;
-    }
+    public String getModelo() { return modelo; }
+    public void setModelo(String modelo) { this.modelo = modelo; }
 
-    public String getModelo() {
-        return modelo;
-    }
+    public String getFabricante() { return fabricante; }
+    public void setFabricante(String fabricante) { this.fabricante = fabricante; }
 
-    public void setModelo(String modelo) {
-        this.modelo = modelo;
-    }
-
-    public String getFabricante() {
-        return fabricante;
-    }
-
-    public void setFabricante(String fabricante) {
-        this.fabricante = fabricante;
-    }
-
-    public String getGeoLocation() {
-        return geoLocation;
-    }
-
-    public void setGeoLocation(String geoLocation) {
-        this.geoLocation = geoLocation;
-    }
+    public String getGeoLocation() { return geoLocation; }
+    public void setGeoLocation(String geoLocation) { this.geoLocation = geoLocation; }
 
     @Override
     public String toString() {

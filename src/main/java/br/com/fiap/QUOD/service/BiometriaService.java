@@ -31,6 +31,8 @@ import org.opencv.imgproc.Imgproc;
 @Service
 public class BiometriaService {
 
+    @Autowired
+    private BiometriaRepository biometriaRepository;
     private static final List<String> TIPOS_PERMITIDOS = Arrays.asList("image/jpeg", "image/png");
     private static final long TAMANHO_MAX = 5 * 1024 * 1024; // 5MB
     private static final int LARGURA_MIN = 200;
@@ -38,7 +40,7 @@ public class BiometriaService {
     private static final CascadeClassifier FACE_DETECTOR;
 
     static {
-        nu.pattern.OpenCV.loadLocally(); // se usar o wrapper openpnp
+        nu.pattern.OpenCV.loadLocally();
     }
 
     static {
@@ -57,17 +59,13 @@ public class BiometriaService {
         }
     }
 
-    @Autowired
-    private BiometriaRepository biometriaRepository;
-
     public Biometria salvarBiometria(MultipartFile file) throws Exception {
-        byte[] imagemBytes = file.getBytes(); // lê uma vez só
+        byte[] imagemBytes = file.getBytes();
         validarImagem(imagemBytes, file.getContentType());
-        validarImagemFraudulenta(imagemBytes, file.getContentType()); // opcional
+        validarImagemFraudulenta(imagemBytes, file.getContentType());
         Biometria biometria = validarMetadados(imagemBytes, file);
         return biometriaRepository.save(biometria);
     }
-
 
     private void validarImagem(byte[] imagemBytes, String contentType) throws Exception {
         if (!TIPOS_PERMITIDOS.contains(contentType)) {
@@ -87,7 +85,6 @@ public class BiometriaService {
             throw new Exception("Dimensão mínima: 200x200 pixels.");
         }
     }
-
 
     private Biometria validarMetadados(byte[] imagemBytes, MultipartFile file) throws Exception {
         Metadata metadata = ImageMetadataReader.readMetadata(new ByteArrayInputStream(imagemBytes));
@@ -114,7 +111,6 @@ public class BiometriaService {
         return biometria;
     }
 
-
     private void validarImagemFraudulenta(byte[] imagemBytes, String contentType) throws Exception {
         // Define extensão com base no tipo MIME
         String extensao;
@@ -123,10 +119,7 @@ public class BiometriaService {
             case "image/png": extensao = ".png"; break;
             default: throw new Exception("Formato não suportado para validação com OpenCV.");
         }
-
-        // Cria arquivo temporário com a extensão correta
         File tempFile = File.createTempFile("upload_", extensao);
-
 
         try {
             // Salva os bytes da imagem no arquivo temporário
@@ -165,8 +158,6 @@ public class BiometriaService {
             // Verifica se pelo menos um rosto foi encontrado
             if (faces.empty()) {
                 throw new Exception("Nenhum rosto detectado na imagem. Possível tentativa de fraude.");
-            } else if (numRostos > 1) {
-                throw new Exception("Mais de um rosto detectado. Imagem inválida para biometria.");
             }
 
         } finally {
