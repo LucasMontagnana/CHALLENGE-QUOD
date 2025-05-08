@@ -20,7 +20,7 @@ public class DocumentoController {
     @Autowired
     private DocumentoService documentoService;
 
-    @PostMapping("/documentos")
+    @PostMapping("/documento")
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<String> uploadDocumento(@RequestParam("file") MultipartFile arquivo) throws IOException {
         // Converte o arquivo em byte[] e cria o Documento
@@ -33,7 +33,7 @@ public class DocumentoController {
         }
     }
 
-    @GetMapping("/documentos")
+    @GetMapping("/documento")
     @ResponseStatus(HttpStatus.OK)
     public List<Documento> listarTodosDocumentos() {
         return documentoService.listarTodosOsDocumentos();
