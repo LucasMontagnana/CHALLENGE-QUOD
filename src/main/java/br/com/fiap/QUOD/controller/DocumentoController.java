@@ -18,7 +18,7 @@ public class DocumentoController {
     @Autowired
     private DocumentoService service;
 
-    @PostMapping("/documentos")
+    @PostMapping("/documento")
     @ResponseStatus(HttpStatus.CREATED)
     public Documento gravar(@RequestParam("file") MultipartFile arquivo) throws IOException {
         // Converte o arquivo em byte[] e cria o Documento
