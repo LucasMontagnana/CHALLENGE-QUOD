@@ -1,11 +1,15 @@
 package br.com.fiap.QUOD.controller;
 
+import br.com.fiap.QUOD.model.BiometriaFacial;
 import br.com.fiap.QUOD.model.Documento;
 import br.com.fiap.QUOD.service.DocumentoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -14,42 +18,24 @@ import java.util.List;
 public class DocumentoController {
 
     @Autowired
-    private DocumentoService service;
+    private DocumentoService documentoService;
 
-    @PostMapping("/documentos")
+    @PostMapping("/documento")
     @ResponseStatus(HttpStatus.CREATED)
-    public Documento gravar(@RequestBody Documento documento){
-        return service.gravar(documento);
+    public ResponseEntity<String> uploadDocumento(@RequestParam("file") MultipartFile arquivo) throws IOException {
+        // Converte o arquivo em byte[] e cria o Documento
+        Documento documento = null;
+        try {
+            documento = documentoService.gravar(arquivo);
+            return ResponseEntity.ok("Documento salvo com ID: " + documento.getId() + "Documento: " + documento.toString());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Erro ao processar documento: " + e.getMessage());
+        }
     }
 
-    @GetMapping("/documentos")
+    @GetMapping("/documento")
     @ResponseStatus(HttpStatus.OK)
-    public List<Documento> listarTodosDocumentos(){
-        return service.listarTodosOsDocumentos();
+    public List<Documento> listarTodosDocumentos() {
+        return documentoService.listarTodosOsDocumentos();
     }
-
-//    @DeleteMapping("/documentos/{id}")
-//    @ResponseStatus(HttpStatus.NO_CONTENT)
-//    public void excluir(@PathVariable Long id){
-//        service.excluir(id);
-//    }
-
-//    @PutMapping("/documentos")
-//    @ResponseStatus(HttpStatus.OK)
-//    public Documento atualizar(@RequestBody Documento documento){
-//        return service.atualizar(documento);
-//    }
-
-//    @GetMapping("/documentos/{nome}")
-//    @ResponseStatus(HttpStatus.OK)
-//    public Documento buscarDocumentoPeloNome(@PathVariable String nome){
-//        return service.buscasPeloNome(nome);
-//    }
-
-//    @GetMapping("/documentos/{dataInicial}/{dataFinal}")
-//    @ResponseStatus(HttpStatus.OK)
-//    public List<Documento> listarPorDataEnvio(@PathVariable LocalDate dataInicial,
-//                                              @PathVariable LocalDate dataFinal){
-//        return service.listarPorDataEnvio(dataInicial, dataFinal);
-//    }
 }
