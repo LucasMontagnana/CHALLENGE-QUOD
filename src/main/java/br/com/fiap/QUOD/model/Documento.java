@@ -2,6 +2,7 @@ package br.com.fiap.QUOD.model;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDate;
+import java.util.Date;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -10,7 +11,7 @@ public class Documento {
 
     @Id
     private String id = UUID.randomUUID().toString();
-    private LocalDate dataEnvio;
+    private Date dataEnvio;
     private byte[] conteudo;
 
     public String getId() {
@@ -21,10 +22,10 @@ public class Documento {
     }
 
 
-    public LocalDate getDataEnvio() {
+    public Date getDataEnvio() {
         return dataEnvio;
     }
-    public void setDataEnvio(LocalDate dataEnvio) {
+    public void setDataEnvio(Date dataEnvio) {
         this.dataEnvio = dataEnvio;
     }
 
