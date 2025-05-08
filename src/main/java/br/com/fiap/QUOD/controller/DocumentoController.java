@@ -33,7 +33,7 @@ public class DocumentoController {
         }
     }
 
-    @GetMapping("/documentos")
+    @GetMapping("/documento")
     @ResponseStatus(HttpStatus.OK)
     public List<Documento> listarTodosDocumentos() {
         return documentoService.listarTodosOsDocumentos();
