@@ -1,5 +1,6 @@
 package br.com.fiap.QUOD.dto;
 import br.com.fiap.QUOD.model.BiometriaFacial;
+import br.com.fiap.QUOD.model.Documento;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.client.RestTemplate;
@@ -47,6 +48,31 @@ public class NotificacaoFraudeRequest {
         var dispositivo = new NotificacaoFraudeRequest.Dispositivo();
         dispositivo.setFabricante(biometria.getFabricante());
         dispositivo.setModelo(biometria.getModelo());
+        dispositivo.setSistemaOperacional("Desconhecido");
+        request.setDispositivo(dispositivo);
+
+        var metadados = new NotificacaoFraudeRequest.Metadados();
+        metadados.setLatitude(0D);
+        metadados.setLongitude(0D);
+        metadados.setIpOrigem("192.168.0.1");
+        request.setMetadados(metadados);
+
+        return request;
+    }
+
+
+    public static NotificacaoFraudeRequest criarNotificacao(Documento documento, String tipoFraude) {
+        NotificacaoFraudeRequest request = new NotificacaoFraudeRequest();
+        request.setTransacaoId(documento.getId());
+        request.setTipoBiometria("Documentoscopia");
+        request.setTipoFraude(tipoFraude);
+        request.setDataCaptura(documento.getDataEnvio());
+        request.setNotificadoPor("sistema");
+        request.setCanalNotificacao(List.of("email"));
+
+        var dispositivo = new NotificacaoFraudeRequest.Dispositivo();
+        dispositivo.setFabricante("Não detectado");
+        dispositivo.setModelo("Não detectado");
         dispositivo.setSistemaOperacional("Desconhecido");
         request.setDispositivo(dispositivo);
 

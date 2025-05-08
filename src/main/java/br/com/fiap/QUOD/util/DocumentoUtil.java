@@ -9,16 +9,12 @@ import java.io.IOException;
 
 public class DocumentoUtil {
 
-    static {
-        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-    }
-
     public static boolean validarQualidadeImagem(MultipartFile file) throws IOException {
         byte[] imagemBytes = file.getBytes();
         Mat imagem = Imgcodecs.imdecode(new MatOfByte(imagemBytes), Imgcodecs.IMREAD_GRAYSCALE);
 
         if (imagem.empty()) {
-            throw new IllegalArgumentException("Imagem inválida ou corrompida.");
+            throw new RuntimeException("Imagem inválida ou corrompida.");
         }
 
         // Nitidez (foco) com Laplacian
@@ -37,6 +33,7 @@ public class DocumentoUtil {
         double contraste = contrasteStdDev.get(0, 0)[0];
 
         // Parâmetros mínimos para aprovação
-        return foco > 100 && brilho > 50 && contraste > 30;
+        System.out.printf("foco" + foco + "brilho: " + brilho + "contrate: " + contraste);
+        return foco > 35 && brilho > 70 && contraste > 30;
     }
 }
